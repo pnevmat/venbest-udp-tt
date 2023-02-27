@@ -5,32 +5,51 @@ const dgram = require('dgram');
 
 const server = dgram.createSocket('udp4');
 
-let connect = [];
-// Оба запуска поддерживаются: как trn1.js так и trn2.js меседжи приходят
-// ToDo: Найти способ как отличать trn1.js и trn2.js и так далее чтоби проверить какой из них отправил сообщение и в случае потери связи вивести с каким из trn била потеряна связь
+const connect = [];
+let disconnectedClients = [];
+
 server.on('message', (msg, rinfo) => {
-	// console.dir(msg);
-	// console.dir(rinfo);
-	connect.push({
-		id: Math.random().toString(),
-		message: msg,
-		rinfo,
-		date: new Date(),
-	});
-	// console.dir(connect);
+	console.dir(rinfo.port);
+	if (!connect.find((item) => item.rinfo.port === rinfo.port)) {
+		connect.push({
+			id: `trn${connect.length + 1}.js`,
+			message: msg,
+			rinfo,
+			date: new Date(),
+		});
+	} else {
+		connect.forEach((item, i) => {
+			if (disconnectedClients.find((client) => client === item.id)) {
+				disconnectedClients = disconnectedClients.filter(
+					(client) => client !== item.id,
+				);
+			}
+
+			if (item.rinfo.port === rinfo.port) connect[i].date = new Date();
+		});
+	}
 });
 
 const intervalId = setInterval(() => {
 	if (connect.length) {
 		const dateNow = new Date();
 
-		const datesDifference = dateNow - connect[connect.length - 1].date;
-		console.dir(datesDifference);
-		if (datesDifference > 60000) {
-			console.dir('нет связи с скриптом "trn1.js"');
-			clearInterval(intervalId);
-		}
+		connect.forEach((item) => {
+			const datesDifference = dateNow - item.date;
+
+			if (
+				datesDifference > 60000 &&
+				!disconnectedClients.find((client) => client === item.id)
+			) {
+				console.dir(`нет связи с скриптом "${item.id}"`);
+				disconnectedClients.push(item.id);
+			}
+		});
 	}
 }, 6000);
+
+server.on('close', () => {
+	clearInterval(intervalId);
+});
 
 server.bind(2222);
