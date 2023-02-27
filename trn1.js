@@ -1,8 +1,7 @@
 'use strict';
-// Client
 
 const dgram = require('dgram');
-// Иванов Иван Иванович
+
 const message = Buffer.from('Иванов Иван Иванович');
 
 const client = dgram.createSocket('udp4');
